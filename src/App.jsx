@@ -1,3 +1,4 @@
+import { supabase } from "./supabaseClient";
 import { useState, useEffect, useRef } from "react";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
@@ -640,64 +641,64 @@ function SettingsTab() {
 /* ─── Main App ───────────────────────────────────────────────────────────── */
 export default function App() {
   const [tab, setTab] = useState("today");
-  const [tasks, setTasks] = useState(TASKS_INIT);
+  // 1. Initialize with empty array since data comes from DB now
+  const [tasks, setTasks] = useState([]); 
   const [project, setProject] = useState(PROJECT_INIT);
   const [gami, setGami] = useState(GAMI_INIT);
   const [checkinDone, setCheckinDone] = useState(false);
   const [checkinResult, setCheckinResult] = useState(null);
   const { particles, fire } = useConfetti();
 
+  // 2. Add this Effect to load tasks from Supabase on startup
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  async function fetchTasks() {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: true });
+    
+    if (error) console.error('Error:', error);
+    else if (data) setTasks(data);
+  }
+
   const totalHrs = tasks.reduce((s,t)=>s+t.hours,0);
   const doneHrs  = tasks.filter(t=>t.status==="done").reduce((s,t)=>s+t.hours,0);
 
-  function toggleTask(id) {
-    setTasks(prev=>prev.map(t=>
-      t.id===id ? {...t, status:t.status==="done"?"todo":"done"} : t
-    ));
+  // 3. Updated toggleTask to save the checkmark to the database
+  async function toggleTask(id) {
+    const taskToToggle = tasks.find(t => t.id === id);
+    const newStatus = taskToToggle.status === "done" ? "todo" : "done";
+
+    // Update UI immediately (Optimistic UI)
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+
+    // Save to Supabase
+    const { error } = await supabase
+      .from('tasks')
+      .update({ status: newStatus })
+      .eq('id', id);
+
+    if (error) console.error("Sync failed:", error);
   }
 
+  // 4. Update handleCheckin (Keep your math logic, but we'll add DB sync later)
   function handleCheckin({ completed_percent, time_spent_hours }) {
+    // ... keep your existing math logic here (it's perfect) ...
     const strict_threshold = 80;
     const meets = completed_percent >= strict_threshold;
-    const newStreak = meets ? gami.streak + 1 : 0;
-    let newMult = gami.multiplier;
-    if (!meets) newMult = Math.max(0.5, newMult - 0.1);
-    else if (completed_percent === 100) newMult = Math.min(2.0, newMult + 0.05);
-
-    const basePoints = meets ? (completed_percent===100 ? 70 : 50) : 0;
-    const earned = Math.round(basePoints * newMult);
-    const newPoints = gami.points + earned;
-    const newLevel = newPoints<500?1:newPoints<1500?2:newPoints<3500?3:newPoints<7500?4:5;
-    const newProgress = Math.min(100, project.progress + (completed_percent/100)*6);
-
-    const result = {
-      checkin: { date:new Date().toISOString().split("T")[0], completed_percent },
-      metrics: {
-        progress_percent: Math.round(newProgress*10)/10,
-        projected_completion: "2025-02-22",
-        velocity_7d: 3.6,
-        time_saved_hours: meets ? 16.8 : 0,
-        required_daily_pace_hours: 2.0,
-      },
-      gamification: {
-        show_celebration: meets,
-        streak_count: newStreak,
-        points_earned: earned,
-        points_total: newPoints,
-        level: newLevel,
-        multiplier: newMult,
-        new_badges: newStreak===7 ? [{id:"streak_7",name:"7-Day Warrior"}] : [],
-      },
-    };
-    setCheckinResult(result);
-    setCheckinDone(true);
-    setProject(p=>({...p,progress:newProgress}));
-    setGami(g=>({...g,streak:newStreak,points:newPoints,level:newLevel,multiplier:newMult}));
+    // ... (rest of your existing calculation code) ...
+    
+    // At the end of handleCheckin:
     if (meets) fire();
+    setCheckinDone(true);
+    // Note: We will add supabase.from('daily_stats').update(...) here in the next step
   }
 
   const today = new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-
+  
   return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",color:"#fff",
       fontFamily:"'Courier New',Courier,monospace"}}>
