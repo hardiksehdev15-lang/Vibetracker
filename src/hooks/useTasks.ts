@@ -7,7 +7,6 @@
  *   const { tasks, streak, loading, error, addTask, updateTask, deleteTask, toggleComplete } = useTasks(userId);
  */
 
-"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, type Task } from "../lib/supabaseClient";

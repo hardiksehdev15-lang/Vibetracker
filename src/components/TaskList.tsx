@@ -3,7 +3,6 @@
  * Renders the full task list: loading skeleton, empty state, or task items.
  */
 
-"use client";
 
 import type { Task } from "../lib/supabaseClient";
 import { TaskItem } from "./TaskItem";

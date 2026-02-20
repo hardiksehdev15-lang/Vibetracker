@@ -4,7 +4,6 @@
  * and clears on success.
  */
 
-"use client";
 
 import { useState, useRef, type FormEvent } from "react";
 import type { NewTask } from "../hooks/useTasks";

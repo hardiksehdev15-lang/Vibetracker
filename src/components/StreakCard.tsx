@@ -4,7 +4,6 @@
  * Shows streak count with fire emoji, motivational copy, and progress ring.
  */
 
-"use client";
 
 import { useEffect, useRef } from "react";
 

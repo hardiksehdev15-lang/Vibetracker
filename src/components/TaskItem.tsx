@@ -8,7 +8,6 @@
  * - fade-in animation on mount
  */
 
-"use client";
 
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
 import type { Task } from "../lib/supabaseClient";
